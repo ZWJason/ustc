@@ -1,0 +1,22 @@
+% !TeX root = ../main.tex
+
+\ustcsetup{
+  keywords = {
+    卷积神经网络, 嵌入式, 部署, 知识蒸馏, 重参数化, 网络优化
+  },
+  keywords* = {
+    Convolutional Neural Networks, Embedded, Deployment，Knowledge Distillation, Re-parameterization, Networks Optimization
+  },
+}
+
+\begin{abstract}
+
+深度卷积神经网络在不同任务上有着远超其他方法的优秀性能，但其计算开销和内存开销限制了其在嵌入式设备上的部署和使用。我们研究如何在保持神经网络精度的情况下，同时减小网络计算开销和运行时内存，以在资源受限(计算延迟、内存占用)的情况下进行部署和使用。在本文中，我们首先广泛调研目前的神经网络压缩和优化研究现状，总结了该领域现有的几类主流研究方向：模型修剪、矩阵/张量分解、模型参数量化、高效网络设计、知识蒸馏，对各类算法和研究进行了大量的文献阅读和探索性的实验，进行一定的总结和综述。其次，我们利用网络参数对于不同输入的重要性的不同，学习不同类型任务在现有网络中的有效连接(即子网络)，并提出一种在运行时预测任务类型和子网络动态选择的新方法——任务感知的子网络切换。该方法在现有网络模型的基础上引入一个辅助分类器和通道选择结构。与传统减枝相比，它根据输入进入不同子网络，动态跳过不重要的参数和连接，在保证计算精度的同时加速卷积，并且通过子网络感知动态加载模型参数，能够显著减小运行时内存，使得深度卷积网络能够更好地部署在内存和算力受限的嵌入式硬件设备上。然后，我们针对多分支网络的内存低效和低并行度结构，提出部署时多分支算子融合策略，提出采用重参数化技术对多分支网络进行融合，减少网络分支情况，将多分支网络合并成为一个类VGG的单路网络，提高网络部署运行时的内存效率和并行度，节省网络资源消耗，加快网络推理速度。
+
+\end{abstract}
+
+\begin{abstract*}
+
+Deep Convolutional Neural Network has far superior performance in different tasks than other methods, but its computational and memory overhead limits its deployment and use on embedded devices.We study how to reduce network computing overhead and runtime memory while maintaining the precision of the neural network, so as to deploy and use it under the condition of resource constraints (computation latency, memory footprint).In this article, we first compression and extensive research current neural network optimization research present situation, summarizes the existing several kind of mainstream research direction in this field: model pruning, matrix/tensor decomposition, model parameter quantitative distillation, efficient network design, knowledge, research on all kinds of algorithms and do a lot of literature reading and exploratory experiments, a summarized and reviewed in this paper.Secondly, we take advantage of the different importance of network parameters to different inputs to learn the effective connections of different types of tasks in the existing network (i.e., subnetworks), and propose a new method to predict the dynamic selection of task types and subnetworks at runtime -- task-aware subnetwork handoff.This method introduces an auxiliary classifier and channel selection structure on the basis of the existing network model.Compared with traditional cut branches, it is based on the input into different sub networks, dynamic skip important parameters and no connection, in guarantee the calculation accuracy and speed up convolution, and dynamic load model parameters through sub network awareness, can significantly reduce the runtime memory, make the depth of the convolution network can be better deployed in memory and calculate the force limited embedded hardware devices.Then, our memory is inefficient for many branch network and low degree of parallel structure, proposes a multiple branch operator fusion strategy deployment, parametric technology is presented in this paper to fusion of multiple branch network, reduce network branch, several branch network will become a kind of VGG single road network, improve the network deployment runtime memory efficiency, and parallelism, save the network resource consumption, speed up the network reasoning.
+
+\end{abstract*}
