@@ -1,6 +1,6 @@
 % !TeX root = ../main.tex
 
-\chapter{自适应高效知识蒸馏}
+\chapter{模型自适应的高效压缩方法}
 
 \section{引言}
 
@@ -47,26 +47,9 @@
 	\end{tabular}
 \end{table}
 
-综合\ref{m1}和\ref{m2}的内容，我们可以得到如下结论：
-\begin{itemize}
-	%\vspace{-1em}
-	\item 在知识蒸馏训练压缩训练小尺寸紧凑模型时，选用越大的教师网络会显著增多额外浮点操做总次数，从而明显的增多训练耗时;
-	\item 当小尺寸紧凑模型和教师网络之间的学习能力差距过于大时，教师网络不仅不会提升训练精度，反倒还会损害模型精度表现;
-\end{itemize}
+上述动机实验表明，既然尺寸越大的教师网络，并不一定就能提升压缩比例和蒸馏精度。选用过大尺寸的教师网络反倒还会增加训练时长。因此，为了进一步探究蒸馏精度与网络尺寸之间的关系，本文在cifar10数据集上进一步实验，采用较小网络和大网络轮番教学的方式探究教师网络模型尺寸对精度的影响。图\ref{kd_cmp}展示了一个五层CNN在cifar上的实验结果。图\ref{kd_cmp_first}中在前15个epoch中使用resnet18教学紧凑网络，而在后15个epoch切换至resnet50教学学生网络。结果表明在前期使用resnet18，后期使用resnet50进行蒸馏的方案的蒸馏精度对比于全程使用resnet50的方案在验证集上的精度仅低了0.005\%，前者为0.837\%，后者为0.842\%，但是训练速度却快了1.4倍。出现这样的提速是因为前15个epoch采用resnet18进行推理，其一次前向推理耗时显著低于resnet50耗时。该实验证明了，在知识蒸馏过程中，前期采用小尺寸网络进行教学并不影响最终精度表现，并能够显著减少训练时长。
 
-
-\section{自适应高效知识蒸馏}
-基于上述动机实验观察，我们提出自适应高效知识蒸馏压缩训练小尺寸紧凑模型的方法。我们认为，知识蒸馏压缩训练的过程应该当是自动适应小尺寸紧凑网络模型的学习过程而不断变化的，而不是一直静态的。1) 在知识蒸馏压缩训练的前期阶段，小尺寸紧凑模型与大尺寸网络模型的学习能力差距是十分大的。2) 在知识蒸馏压缩训练的中后期阶段，随着小尺寸模型不断训练学习，其与大尺寸模型的能力差距逐渐减少。因此，若在知识蒸馏压缩训练的初期，便一直采用大尺寸模型教学，不仅会损害模型精度压缩比率，还会显著增加训练耗时。为解决这一问题，我们在小尺寸紧凑模型和大尺寸模型之间引入一个辅助教学网络。该网络尺寸介于小尺寸紧凑网络模型和大尺寸网络模型之间，其主要职责是负责小尺寸紧凑网络模型的前期教学，一旦当小尺寸网络模型和大尺寸网络模型之间的差异缩小到某个可接受范围之内后，便切换至大尺寸网络继续教学。图\ref{frame}展示了完整的自适应蒸馏框架。通过在主教学网络和紧凑网络之间引入辅助教学网络缩小它们之间的差距。在任何一组训练batch中，我们将训练数据分为大gap类别和小gap类别，这样的分类信息来自于上一次epoch。对于大gap类别图像，我们采用辅助教学网络进行教学，用于缩小紧凑网络和主教学网络之间的差距，一旦当差距缩小到可接受范围时，我们便将其归类为小gap类别。小gap类别将采用主教学网络进行精细化教学，用于进一步提升精度。
-
-\begin{figure}[ht]
-	\centering
-	\includegraphics[width=1\textwidth]{figures/adaptive_frame.png}
-	\caption{自适应知识蒸馏框架。}
-	\label{frame}
-\end{figure}
-在知识蒸馏压缩训练刚启动时，数据集中的所有图片都被预先划分到大GAP类别中，随着训练迭代，紧凑网络的学习能力提升，大GAP类别中的部分图片被划入到小GAP类别中，这样便启用主教学网络教学，直至所有图片都被划入到小GAP类别或达到训练迭代次数上限便停止。这样可以明显的提升模型压缩比例和减少整体训练耗时。
-
-\begin{figure*}[t]
+\begin{figure*}[h]
 	\centering
 	\subfigure[在第15个epoch切换主教师网络的训练结果]{\includegraphics[width=0.9\textwidth]{figures/15_inter_distill.eps}
 		\label{kd_cmp_first}}
@@ -77,6 +60,134 @@
 \end{figure*}
 
 
+值得注意的是，在图\ref{kd_cmp_first}中的第10个epoch中，五层紧凑CNN网络的验证精度出现了一个明显的下滑。本文推测，这是因为五层紧凑CNN网络已经无法从resnet18中学习到更多额外知识，因此出现一个明显的精度下滑。为了进行实验对比，图\ref{kd_cmp_second}实验中将教学切换时机更改为在第9个epoch处。实验结果表明，在这样的参数设置下，与全程使用resnet50教学的知识蒸馏方案之间的精度差距进一步缩小至0.001\%，优于在第15个epoch处切换。这说明在知识蒸馏过程不断迭代时，学生网络的学习能力也在不断变强。知识蒸馏整个过程需要动态调整教学策略，以更好的教学学生网络，以进一步提升压缩比率。
+
+综合\ref{m1}和\ref{m2}的内容，我们可以得到如下结论：
+\begin{itemize}
+	%\vspace{-1em}
+	\item 在知识蒸馏训练压缩训练小尺寸紧凑模型时，选用越大的教师网络会显著增多额外浮点操做总次数，从而明显的增多训练耗时;
+	\item 当小尺寸紧凑模型和教师网络之间的学习能力差距过于大时，教师网络不仅不会提升训练精度，反倒还会损害模型精度表现;
+	\item 知识蒸馏压缩是一个动态的压缩训练过程，紧凑网络的学习能力随着迭代次数的增加而不断提升;
+\end{itemize}
+
+
+\section{自适应高效知识蒸馏压缩方法}
+基于上述动机实验观察，我们提出自适应高效知识蒸馏压缩训练小尺寸紧凑模型的方法。我们认为，知识蒸馏压缩训练的过程应该当是自动适应小尺寸紧凑网络模型的学习过程而不断变化的，而不是一直静态的。1) 在知识蒸馏压缩训练的前期阶段，小尺寸紧凑模型与大尺寸网络模型的学习能力差距十分大。2) 在知识蒸馏压缩训练的中后期阶段，随着小尺寸模型不断训练学习，其与大尺寸模型的能力差距逐渐减少。因此，若在知识蒸馏压缩训练的初期，便一直静态采用大尺寸模型教学，不仅会损害模型精度压缩比率，还会显著增加训练耗时。
+\subsection{自适应高效知识蒸馏}
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=1\textwidth]{figures/adaptive_frame.png}
+	\caption{自适应知识蒸馏框架。}
+	\label{frame}
+\end{figure}
+为解决这一问题，我们在小尺寸紧凑模型和大尺寸模型之间引入一个辅助教学网络。该网络尺寸介于小尺寸紧凑网络模型和大尺寸网络模型之间，其主要职责是负责小尺寸紧凑网络模型的前期教学，一旦当小尺寸网络模型和大尺寸网络模型之间的差异缩小到某个可接受范围之内后，便切换至大尺寸网络继续教学。图\ref{frame}展示了完整的自适应蒸馏框架。通过在主教学网络和紧凑网络之间引入辅助教学网络缩小它们之间的差距。在任何一组训练batch中，我们将训练数据分为大gap类别和小gap类别，这样的分类信息来自于上一次epoch。对于大gap类别图像，我们采用辅助教学网络进行教学，用于缩小紧凑网络和主教学网络之间的差距，一旦当差距缩小到可接受范围时，我们便将其归类为小gap类别。小gap类别将采用主教学网络进行精细化教学，用于进一步提升精度。
+
+在知识蒸馏压缩训练刚启动时，数据集中的所有图片都被预先划分到大GAP类别中，随着训练迭代，紧凑网络的学习能力提升，大GAP类别中的部分图片被划入到小GAP类别中，这样便启用主教学网络教学，直至所有图片都被划入到小GAP类别或达到训练迭代次数上限便停止。这样可以明显的提升模型压缩比例和减少整体训练耗时。
+
+
+\subsection{知识蒸馏方式}
+知识蒸馏的核心思想是，教师网络的输出的软标签包含了关于数据点的更多信息，而不仅仅是类标签。例如，如果为一张图像分配了多个类别的高概率，则这可能意味该图像的有极大可能是位于这些类别之间的决策边界附近。因此，强迫让紧凑的学生网络模仿这些可能性能够有效让紧凑的学生网络学习到教师网络在硬标签信息之外发现的一些额外的知识。从而，让有更少参数量的紧凑学生网络依然能够取得和大尺寸网络相当的精度表现。
+
+具体地来说，给定任意一张图片x，在经过教师网络的各层卷积核提取特征后并由全连接层输出一个各类别可能的分数向量 $s(x)$：
+
+\begin{equation}
+s(x) = [s_1(x),s_2(x),...,s_K(x)]
+\end{equation}
+
+该向量由softamx函数\ref{softmax1}，被归一化到0-1区间的最终可能性，分数向量经过softmax函数后输出的向量被称作\textbf{logits}。
+\begin{equation}
+\begin{aligned}
+\label{softmax1}
+p(x)_j = \frac{e^{s_j(x)}}{\sum_{k=1}^N e^{s_k(x)}}  (j=1....K)
+\end{aligned}
+\end{equation}
+但是，教学网络的输出\textbf{logits}通常包含了输入图片的最高可能性，这可能会损失部分知识信息，降低紧凑学生网络的精度表现。因此，Hinton等人\cite{hinton2015distilling}提出用\textbf{蒸馏温度}软化教师/学生网络的输出可能性，改造后带温度的softmax函数\ref{softmax2}如下所示。
+\begin{equation}
+\begin{aligned}
+\label{softmax2}
+p(x)^{\sim}_j = \frac{e^{s_j(x)}/\tau}{\sum_{k=1}^N e^{s_k(x)/\tau}}  (j=1....K)
+\end{aligned}
+\end{equation}
+其中蒸馏温度$\tau>1$，该参数是一个超参数，需要人为设定。$\tau$值越大，会产生越平滑的概率分布，当$\tau=1$时，就是标准的softmax函数。
+
+紧凑学生网络的用于反向传播优化的loss函数$L$，是典型的交叉熵$L_{cls}$和知识提取$L_{KD}$的线性组合。即，在训练中从数据集中最小化每个图片示例的$L$。
+\begin{equation}
+\begin{aligned}
+\label{loss}
+L = \alpha L_{cls} + (1 - \alpha)L_{KD}
+\end{aligned}
+\end{equation}
+其中$L_{KD}$的公式如\ref{lkd}所示：
+\begin{equation}
+\begin{aligned}
+\label{lkd}
+L_{KD} = -\alpha \tau^2 \sum_{k}p^{\sim t}_{k}(x)logp^{\sim s}_{k}(x)
+\end{aligned}
+\end{equation}
+公式\ref{loss}中的$\alpha$用于权衡加权两个损失的线性和，是一个超参数，大量实践经验\cite{zagoruyko2016paying,huang2017like,lan2018knowledge,hinton2015distilling}表明当$\alpha=0.9$时，知识蒸馏有着最好的平均性能。公式\ref{lkd}中$p^{\sim t}$指教师网络输出的\emph{logits}，$p^{\sim s}$指学生网络输出的\emph{logits}。
+
+
+
+\subsection{训练集感知的自适应策略}
+随着知识蒸馏训练过程的不停迭代，紧凑学生网络的学习能力逐渐变强。具体地来讲，即是紧凑学生网络对同一个训练组(train batch)图片示例的输出概率分布会逐渐趋近于教师网络。对于紧凑学生网络已经掌握的训练组重复使用辅助网络教学，并不会让紧凑学生网络学习到更多额外的知识，因此一旦当紧凑学生网络对某一个训练组的输出概率分布逼近于辅助教学网络时，便可以切换至有更多额外知识的主教学网络进行教学，提升紧凑学生网络的精度表现。为衡量紧凑学生网络对某一个训练组的学习掌握情况，本文采用非对称距离度量KL散度，用于度量紧凑学生网络和辅助教学网络之间的概率分布间的差异。根据KL散度的信息，对单个训练组动态的选择教学网络。具体地来说，对于单张输入图片x，教师网络与紧凑学生网络之间输出概率分布的KL散度\ref{kl}为:
+
+\begin{equation}
+\begin{aligned}
+\label{kl}
+D_{KL}(p^{t}(x)||p^{s}(x))=\sum_{i=1}^{K}(p^{t}_{k}(x)logp^{t}_{k}(x) - p^{t}_{k}(x)logp^{s}_{k}(x)) (i=1....K)
+\end{aligned}
+\end{equation}
+其中$p^{t}(x)$为教师网络输出概率分布，$p^{s}(x)$为学生网络输出概率分布。对于一个训练组$B$(train batch)，教师网络与学生网络之间的输出概率分布KL散度被定义为：
+\begin{equation}
+\begin{aligned}
+\label{kl_batch}
+D_{KL}(p^{t}(B)||p^{s}(B))= \frac{\sum_{i=1}^{K}D_{KL}(p^{t}(x_i)||p^{s}(x_i))}{batchsize} (i=1....batchsize)
+\end{aligned}
+\end{equation}
+其中，\emph{batchsize}是当前训练组的尺寸大小。该公式\ref{kl_batch}即表示训练组中所有输入图片x的教师网络与学生网络概率分布KL散度平均值。
+
+使用上述定义到训练组概率分布的KL散度，我们便可以根据紧凑学生网络的输出，进行训练集感知的自适应教师选择。如算法\ref{alm2}所示，其主要流程如下：
+\begin{itemize}
+	\item 预先加载主教师网络模型和辅助教师网络模型。 
+	\item 在每一次训练迭代时，计算学生网络和辅助教师网络模型之间的训练组KL散度值。
+	\item 对于KL散度小于可接受阈值$\sigma$的训练组，启用主教师网络模型教学，反之则继续使用辅助教学网络模型。
+\end{itemize}
+
+\begin{algorithm}[H]
+	\caption{Adaptive knowledge distillation}
+	\SetKwFunction{Unio}{Union}
+	\SetKwInOut{Input}{input}
+	\SetKwInOut{Output}{output}
+	
+	\Input{A main teacher model with lager size and higher accuracy $T_m$, a assistant teacher model with proper size and acceptable accuracy $T_a$, a lightweight model to be trained $S$, train batch kullback-leibler divergence $KL_{batch}(.)$ defined in Eq.\ref{kl_batch}, distillation loss $Loss(.)$ defined in Eq.\ref{loss}, distillation temperature $\tau$, hyperparameter $\alpha$ and threshold $\sigma$.}
+	\Output{lightweight, compressed and high accuracy model $S$.}
+	\BlankLine
+	
+	\For{$i=1,\cdots,epochs$}{
+		\For{$j=1,\cdots, \frac{length(dataset)}{batchsize}$}{
+			$p^{s}_j = S.forward(trainBatch_j)$\;
+			$p^{ta}_j = T_a.forward(trainBatch_j)$\;
+			
+			$KL_j = KL_{batch}(p^{s},p^{t})$\;
+			
+			\If{$KL_j < \sigma$}{
+				$p^{tm}_j = T_m.forward(trainBatch_j)$\;
+				$g_j = Loss(p^{s}_j,p^{tm}_j,labels,\tau,\alpha)$\;
+			}\Else{
+				$g_j = Loss(p^{s}_j,p^{ta}_j,labels,\tau,\alpha)$\;
+			}
+			$S.backward(g_j)$\;
+		}
+		$valAcc = evaluate(S)$\;
+		\If{$valAcc > bestAcc$}{
+			$bestAcc = valAcc$\;
+			$save(S)$\;
+		}
+	}
+	\label{alm2}
+\end{algorithm}
+
+\section{实验结果}
 
 %\begin{itemize}
 %    %\vspace{-1em}
