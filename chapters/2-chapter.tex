@@ -224,7 +224,7 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=1\textwidth]{figures/Jresnet/FIG5_TII-21-2603.pdf}
+	\includegraphics[width=0.9\textwidth]{figures/Jresnet/FIG5_TII-21-2604.pdf}
 	\caption{Illustrations of fusing conv3x3 and conv1x1.}
 	\label{fuse_131}
 \end{figure}
@@ -236,7 +236,7 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=1\textwidth]{figures/Jresnet/FIG6_TII-21-2603.pdf}
+	\includegraphics[width=0.8\textwidth]{figures/Jresnet/FIG6_TII-21-2604.pdf}
 	\caption{Equivalent conv3x3 representation of conv1x1 convolution kernel.}
 	\label{conv1_expand}
 \end{figure}
@@ -244,6 +244,7 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 
 \begin{algorithm}[H]
 	\caption{Convert Juggler-ResNet into liner-topology architecture}
+	\label{alm11}
 	\SetKwFunction{Unio}{Union}
 	\SetKwInOut{Input}{input}
 	\SetKwInOut{Output}{output}
@@ -263,7 +264,7 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 				}
 			    $g_i.L =Conv_{m}$\
 	}
-	\label{alm11}
+	
 \end{algorithm}
 
 使用上述定义到的三种融合算子，我们可以将Juggler ResNet转换为线性结构进行推理。如算法\ref{alm11}所示，其主要流程如下：
@@ -296,9 +297,9 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 
 \textbf{平台设置}: 我们在嵌入式平台NVIDIA Tx2和配备有NVIDIA V100 GPU的服务器上部署测试Juggler ResNet。实验机器的详细配置如表\ref{configuration}所示。
 
-\textbf{模型和数据集}: 实验采用五个原始的\emph{resnet}模型（即\emph{resnet-18}、\emph{resnet-34}、\emph{resnet-50}和\emph{resnet-101}）来比较它们与Juggler-ResNets的准确性和推理性能。训练和验证数据集为CIFAR-100和CIFAR-10，这两个数据集被广泛用于测试CNN模型。
-%
-\textbf{深度学习平台框架}: 为了全面评估Juggler-ResNets和\emph{ResNets}在收敛速度和图片分类精度方面的差异，\textbf{\emph{Pytorch}}被用作训练框架。为了比较Juggler-ResNets和\emph{resnet}在不同框架上的推理性能，使用\textbf{\emph{TensorRT}}和\textbf{\emph{Pytorch}}作为推理计算框架\cite{2009learning}。
+\textbf{模型和数据集}: 实验采用五个原始的\emph{resnet}模型（即\emph{resnet-18}、\emph{resnet-34}、\emph{resnet-50}和\emph{resnet-101}）来比较它们与Juggler-ResNets的准确性和推理性能。训练和验证数据集为CIFAR-100和CIFAR-10，这两个数据集被广泛用于测试CNN模型\cite{2009learning}。
+
+\textbf{深度学习平台框架}: 为了全面评估Juggler-ResNets和\emph{ResNets}在收敛速度和图片分类精度方面的差异，\textbf{\emph{Pytorch}}被用作训练框架。为了比较Juggler-ResNets和\emph{resnet}在不同框架上的推理性能，使用\textbf{\emph{TensorRT}}和\textbf{\emph{Pytorch}}作为推理计算框架。
 
 \begin{figure*}[!t]
 	\centering
@@ -387,7 +388,7 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 
 此外，Juggler ResNet在不同的推理计算框架上都实现了不同程度的加速效果，如图.\ref{speed}(a),(b)所示。 在不同的硬件条件下，它在\emph{Pytorh}框架上的加速最为显著，比原来的\emph{resnet}快2.05-4.31倍。即使在主流的推理加速框架TensorRT上，Juggler-ResNet的性能也比原始的\emph{resnets}高出3.17倍。值得注意的是，对比Juggler ResNet对Pytork和Tensorrt框架的加速效果，Tensorrt仅比Pytork快1.06-1.22倍，这与Pytork的推理速度几乎相同。因为所有推理计算框架在执行之前都会执行基于规则的图转换优化。这一结果表明，由于性能的提高实际上来自于它的线性拓扑结构，所以Juggler-ResNet的优化空间很少。 
 
-\subsubsection{Throughput}
+\subsubsection{吞吐量}
 
 鉴于resnet152的参数量最多，这既可以显示优化性能的极限和硬件计算能力的拐点。因此，我们选择它作为比较模型。如图.\ref{throughput}所示，随着batchsize大小的增加，两个网络的曲线具有几乎相同的上升趋势。然而，Juggler-ResNet152在较大batchsize的大小设置下上的吞吐量明显优于ResNet152。在Tx2上，Juggler-ResNet152的峰值吞吐量是ResNet152的1.38倍。这种差距在V100上更为明显，V100上的Juggler-ResNet152的峰值吞吐量是ResNet152的3.22倍。
 
@@ -402,6 +403,9 @@ Conv_{fused} &= W_{fused}X + b_{fused}
 	\caption{在不同的批大小设置下，不同硬件平台上的Juggler-ResNet152和ResNet152的吞吐量。在预热硬件后，平均运行100次的实验结果。在Tx2上的输入图像是3通道56分辨率， 在V100上的输入图像是3通道256分辨率。}
 	\label{throughput}
 \end{figure*}
+
+
+\subsubsection{运行时内存优化}
 
 \begin{figure}[h]
 	\centering

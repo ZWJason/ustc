@@ -7,6 +7,14 @@
 近年来，深度学习快速发展，已在许多任务中达到了优异的性能表现，使其越来越多的应用在众多生活与工业领域。但这些深度神经网络模型优异的性能都依赖于具有数百万甚至数十亿个参数的深度网络模型，需要消耗大量的计算资源和存储资源，需要高性能的硬件作为支撑，这对实际部署、运行和应用的环境提出了较高的要求。因此，深度神经网络的压缩与优化一直都是一个非常关键的问题，特别是对于计算资源有限的嵌入式移动设备来说，如此高的计算资源要求是不可接受的。另一个关键的挑战是能源消耗:由于移动设备的电池有限，繁重的计算会很快耗尽电池。然而大多数的模型压缩算法与高效的网络结构对于计算硬件并不友好，虽然能够显著模型参数，但是并没有很好的利用硬件性能，达到理论的上的加速比。
 
 在任意深度学习的应用场景落地一个模型/算法时，需要经历两个基本步骤：
+
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=0.9\textwidth]{figures/adaptive_frame.png}
+	\caption{自适应知识蒸馏框架。}
+	\label{frame}
+\end{figure}
+
 \section{动机实验}
 \subsection{存储压缩与训练耗时}
 \label{m1}
@@ -51,9 +59,9 @@
 
 \begin{figure*}[h]
 	\centering
-	\subfigure[在第15个epoch切换主教师网络的训练结果]{\includegraphics[width=0.9\textwidth]{figures/15_inter_distill.eps}
+	\subfigure[在第15个epoch切换主教师网络的训练结果]{\includegraphics[width=0.45\textwidth]{figures/15_inter_distill.eps}
 		\label{kd_cmp_first}}
-	\subfigure[在第9个epoch切换主教师网络的训练结果]{\includegraphics[width=0.9\textwidth]{figures/9_inter_distill.eps}
+	\subfigure[在第9个epoch切换主教师网络的训练结果]{\includegraphics[width=0.45\textwidth]{figures/9_inter_distill.eps}
 		\label{kd_cmp_second}}
 	\caption{在\emph{Cifar10}数据集上，以学习率=0.01，批大小=128，蒸馏温度=20，alpha=0.9，adam优化器，30个epoch的训练结果其中 \emph{resnet18-50}指采用两个教师网络教学，辅助网络为resnet18，主教师网络为resent50。 \emph{resnet50} 指采用教师教师网络为resnet50的常规知识蒸馏方法。 \emph{No-Kd} 指不使用知识蒸馏的常规训练方式。}
 	\label{kd_cmp}
@@ -72,21 +80,27 @@
 
 
 \section{自适应高效知识蒸馏压缩方法}
+
 基于上述动机实验观察，我们提出自适应高效知识蒸馏压缩训练小尺寸紧凑模型的方法。我们认为，知识蒸馏压缩训练的过程应该当是自动适应小尺寸紧凑网络模型的学习过程而不断变化的，而不是一直静态的。1) 在知识蒸馏压缩训练的前期阶段，小尺寸紧凑模型与大尺寸网络模型的学习能力差距十分大。2) 在知识蒸馏压缩训练的中后期阶段，随着小尺寸模型不断训练学习，其与大尺寸模型的能力差距逐渐减少。因此，若在知识蒸馏压缩训练的初期，便一直静态采用大尺寸模型教学，不仅会损害模型精度压缩比率，还会显著增加训练耗时。
+
+
 \subsection{自适应高效知识蒸馏}
-\begin{figure}[h]
-	\centering
-	\includegraphics[width=1\textwidth]{figures/adaptive_frame.png}
-	\caption{自适应知识蒸馏框架。}
-	\label{frame}
-\end{figure}
 为解决这一问题，我们在小尺寸紧凑模型和大尺寸模型之间引入一个辅助教学网络。该网络尺寸介于小尺寸紧凑网络模型和大尺寸网络模型之间，其主要职责是负责小尺寸紧凑网络模型的前期教学，一旦当小尺寸网络模型和大尺寸网络模型之间的差异缩小到某个可接受范围之内后，便切换至大尺寸网络继续教学。图\ref{frame}展示了完整的自适应蒸馏框架。通过在主教学网络和紧凑网络之间引入辅助教学网络缩小它们之间的差距。在任何一组训练batch中，我们将训练数据分为大gap类别和小gap类别，这样的分类信息来自于上一次epoch。对于大gap类别图像，我们采用辅助教学网络进行教学，用于缩小紧凑网络和主教学网络之间的差距，一旦当差距缩小到可接受范围时，我们便将其归类为小gap类别。小gap类别将采用主教学网络进行精细化教学，用于进一步提升精度。
 
 在知识蒸馏压缩训练刚启动时，数据集中的所有图片都被预先划分到大GAP类别中，随着训练迭代，紧凑网络的学习能力提升，大GAP类别中的部分图片被划入到小GAP类别中，这样便启用主教学网络教学，直至所有图片都被划入到小GAP类别或达到训练迭代次数上限便停止。这样可以明显的提升模型压缩比例和减少整体训练耗时。
 
 
 \subsection{知识蒸馏方式}
-知识蒸馏的核心思想是，教师网络的输出的软标签包含了关于数据点的更多信息，而不仅仅是类标签。例如，如果为一张图像分配了多个类别的高概率，则这可能意味该图像的有极大可能是位于这些类别之间的决策边界附近。因此，强迫让紧凑的学生网络模仿这些可能性能够有效让紧凑的学生网络学习到教师网络在硬标签信息之外发现的一些额外的知识。从而，让有更少参数量的紧凑学生网络依然能够取得和大尺寸网络相当的精度表现。
+知识蒸馏的核心思想是，教师网络的输出的软标签包含了关于数据点的更多信息，而不仅仅是类标签。例如，图\ref{label}展示了一张小狗类别的图片软标签和硬标签的差异，如果为一张图像分配了多个类别的高概率，则这可能意味该图像的有极大可能是位于这些类别之间的决策边界附近。因此，强迫让紧凑的学生网络模仿这些可能性能够有效让紧凑的学生网络学习到教师网络在硬标签信息之外发现的一些额外的知识。从而，让有更少参数量的紧凑学生网络依然能够取得和大尺寸网络相当的精度表现。
+
+\begin{figure}[ht]
+	\centering
+	\includegraphics[width=1\textwidth]{figures/label.pdf}
+	\caption{An illustration of network intrusion detection for the extra knowledge.}
+	\label{label}
+\end{figure}
+
+
 
 具体地来说，给定任意一张图片x，在经过教师网络的各层卷积核提取特征后并由全连接层输出一个各类别可能的分数向量 $s(x)$：
 
@@ -155,27 +169,29 @@ D_{KL}(p^{t}(B)||p^{s}(B))= \frac{\sum_{i=1}^{K}D_{KL}(p^{t}(x_i)||p^{s}(x_i))}{
 
 \begin{algorithm}[H]
 	\caption{Adaptive knowledge distillation}
+	\label{alm2}
 	\SetKwFunction{Unio}{Union}
 	\SetKwInOut{Input}{input}
 	\SetKwInOut{Output}{output}
-	
 	\Input{A main teacher model with lager size and higher accuracy $T_m$, a assistant teacher model with proper size and acceptable accuracy $T_a$, a lightweight model to be trained $S$, train batch kullback-leibler divergence $KL_{batch}(.)$ defined in Eq.\ref{kl_batch}, distillation loss $Loss(.)$ defined in Eq.\ref{loss}, distillation temperature $\tau$, hyperparameter $\alpha$ and threshold $\sigma$.}
 	\Output{lightweight, compressed and high accuracy model $S$.}
 	\BlankLine
 	
 	\For{$i=1,\cdots,epochs$}{
 		\For{$j=1,\cdots, \frac{length(dataset)}{batchsize}$}{
+				
 			$p^{s}_j = S.forward(trainBatch_j)$\;
-			$p^{ta}_j = T_a.forward(trainBatch_j)$\;
-			
-			$KL_j = KL_{batch}(p^{s},p^{t})$\;
-			
-			\If{$KL_j < \sigma$}{
+		
+			\If{$KLarray[j]< \sigma$}{
 				$p^{tm}_j = T_m.forward(trainBatch_j)$\;
 				$g_j = Loss(p^{s}_j,p^{tm}_j,labels,\tau,\alpha)$\;
+				$KL_j = KL_{batch}(p^{s},p^{tm})$\;
 			}\Else{
+				$p^{ta}_j = T_a.forward(trainBatch_j)$\;
 				$g_j = Loss(p^{s}_j,p^{ta}_j,labels,\tau,\alpha)$\;
+				$KL_j = KL_{batch}(p^{s},p^{ta})$\;
 			}
+		    $KLarray[j] = KL_j$\;
 			$S.backward(g_j)$\;
 		}
 		$valAcc = evaluate(S)$\;
@@ -184,11 +200,85 @@ D_{KL}(p^{t}(B)||p^{s}(B))= \frac{\sum_{i=1}^{K}D_{KL}(p^{t}(x_i)||p^{s}(x_i))}{
 			$save(S)$\;
 		}
 	}
-	\label{alm2}
+	
 \end{algorithm}
 
 \section{实验结果}
+\subsection{实验设置}
 
+\begin{table}[h]
+	\caption{Configuration of the experiment}
+	\centering
+	%\setlength{\tabcolsep}{0.2mm}{
+	\begin{tabular}{cc}
+		\hline
+		& \textbf{Server}                           \\ \hline
+		\textbf{OS}  & Ubuntu 16.04 Xenial          \\ 
+		\textbf{CPU} & 1*Intel Xeon E5-2620 v4      \\ 
+		\textbf{GPU} & 1*NVIDIA Tesla V100          \\ 
+		\textbf{RAM} & 64GB DDR4                   \\ \hline
+	\end{tabular} %} 
+	\label{configuration2}
+\end{table}
+
+
+\textbf{平台设置}: 我们在配备有NVIDIA V100 GPU的服务器上部署评估自适应知识蒸馏的小瓜哦。实验机器的详细配置如表\ref{configuration2}所示。
+
+\textbf{模型和数据集}: 实验采用\emph{resnet}、\emph{resnext}和\emph{vgg}系列模型（即\emph{vgg-16}、\emph{vgg-19}、\emph{resnext29}、\emph{resnet-18}、\emph{resnet-34}、\emph{resnet-50}、\emph{resnet-101}）来全面评估自适应知识蒸馏方式的有效性。训练和验证数据集为CIFAR-100和CIFAR-10，这两个数据集被广泛用于测试CNN模型。
+
+\textbf{深度学习平台框架}: 为了全面评估自适应知识蒸馏在模型压缩比率、训练耗时和图片分类精度的性能表现，本文采用\textbf{\emph{Pytorch}}作训练框架。
+
+\subsection{训练加速效果}
+
+\begin{figure*}[!t]
+	\centering
+	
+	\subfigure[在cifar10数据集上的实验结果]{\includegraphics[width=0.9\textwidth]{cifar10_speed.eps}
+		\label{fig_cifa10}}
+	
+	\subfigure[在cifar100数据集上的实验结果]{\includegraphics[width=0.9\textwidth]{cifar100_speed.eps}
+		\label{fig_cifar100}}
+	\caption{学习率=0.01、batchsize=128、动量系数=0.9的标准SGD，在5个epoch余弦退火的预热后，120个epoch的实验训练结果。}
+	\label{train_speed}
+\end{figure*}
+
+图\ref{train_speed}展示了自适应蒸馏和常规蒸馏方法的蒸馏速度和训练精度在cifar10数据集和cifar100数据集上的实验结果对比图。其中，常规知识蒸馏和自适应蒸馏所选取的蒸馏教师网络都是resnet101，轻量级学生网络为renset18，自适应知识蒸馏采用resnet50作辅助教学网络，且阈值均设置为$\sigma = 4\times10^{-3}$。从训练精度的角度来讲，图\ref{train_speed}展示了，无论是在cifar10数据集还是cifar100数据集上，两种蒸馏方式的训练精度均相差不大。在cifar10数据集上自适应知识蒸馏的验证精度为0.954\%，常规知识蒸馏的验证精度为0.957\%。在cifar100上的验证精度分别是0.761\%和0.757\%。这证明了引入辅助教学网络进行自适应蒸馏的方式并不会影响网络的验证精度。自适应蒸馏保留了知识蒸馏提升精度的优点，在训练初期采用中型的辅助教学网络不会影响最终网络模型精度表现。
+
+从训练速度上看，自适应蒸馏的训练速度明显快于常规知识蒸馏。完成120个epoch的训练，自适应蒸馏在cifar10和cifar100上分别耗时81分钟28秒和78分钟19秒，而常规知识蒸馏的方式却花费了87分钟20秒和86分钟49秒，自适应知识蒸馏快了5分钟32秒和8分钟30秒。从图\ref{train_speed}中也能很明显的看到两种方式在一个epoch内训练速度的变化。对比于常规知识蒸馏恒定的每秒处理1214张图片的训练速度，自适应知识蒸馏在训练初期的0-50个epoch内有着平均每秒1645张图片的训练速度。这是因为中型辅助教学网络的前向推理时间明显小于主教学网络，这极大的了减少了在蒸馏初期阶段的浮点操做总次数FLOPs。
+
+此外，在相同阈值$\sigma = 4x10^{-3}$的设置下，不同数据集对辅助教学网络和主教学网络的切换时机也产生了影响。如图\ref{fig_cifa10}中所示，在cifar10数据集上主教学和辅助教学网络的切换时间发生在19-25这个epoch区间内，并且从图形上来看训练速度的曲线下降十分快，这表明在19-25个epoch内，几乎所有训练组的KL散度值快速小于所设定的阈值。然而，如图\ref{fig_cifa100}所示，在更复杂的cifar100数据集上，辅助教学网络和主教学网络的切换时机却发生在29-74个epoch内。不仅切换的第一次时机发生了延后，并且切换时间也大大延长。从图形上来看，cifar100数据集上训练速度曲线缓慢下降。这表明在46个epoch内处于混合教学阶段。出现这样的现象的原因是因为，越复杂的数据集会让紧凑轻量级学生花更多时间学习。另一个值得注意的是，图\ref{fig_cifa10}和图\ref{fig_cifar100}中的实线验证精度在训练前期阶段往往都会高于虚线验证精度，虽然两种方式的最终收敛验证精度相差无几。这表明了自适应蒸馏的方法在网络训练的前期阶段，能够快速的让紧凑轻量级学生达到一个比较高的验证准确率，而常规知识蒸馏的方式，在网络前期阶段并未起到很好的精度提升效果。
+
+\subsection{自适应蒸馏}
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+\begin{table}[]
+	\caption{renset18的$\sigma = 9.5\times10^{-3}$，shufflenetv2的$\sigma = 9.5\times10^{-3}$
+		。}
+	\label{adaptive_kd}
+	\centering
+	\begin{tabular}{lccccc}
+		\toprule
+		\textbf{Method}   & \textbf{Model}   &\textbf{GFLPOs} & \textbf{Size} & \textbf{Top-1 (\%)} & \textbf{Train time (s)} \\
+		\toprule
+		Teacher  & Resnet101  &   0.605       &326MB       & 77.87\%& 17983            \\\hline
+		\multirow{3}{*}{\begin{tabular}[c]{@{}l@{}}Assitant\\ Teacher\end{tabular}} 
+		& Resnet34                      &0.268                    &163MB      &75.87\%            &5820                \\
+		& Resnet50                        & 0.301            &180MB          & 76.49\% & 11203               \\
+		& Resnext29                     & 0.260                 &264MB         & 76.63\%           &  39148              \\\hline
+		\multirow{2}{*}{Student}                                                    & Resnet18           & 0.131             &86MB            &74.32\%           & 3712              \\
+		& Shufflenetv2                           &0.0032             &3.6MB            &69.51\%            &2716                \\ \toprule
+		\multirow{2}{*}{\begin{tabular}[c]{@{}c@{}}Regular\\ KD\end{tabular}}   & Resnet18\&Resnet101(T)                 &                          &86MB     &$76.84\%_{\uparrow 2.52}$       &8623                \\
+		& Shufflenetv2\&Resnet101(T)  &                      &3.6MB    &$69.34\%_{\downarrow 0.17}$           &7959                 \\\toprule
+		\multirow{6}{*}{\begin{tabular}[c]{@{}c@{}}Adaptive\\ KD\\Resnet101(T)\end{tabular}} & Renset18\&Resnet34(A)  &           &86MB          &$76.73\%_{\downarrow 0.11}$  &$7015_{\downarrow 1608}$                \\
+		
+		& Resnet18\&Resnet50(A)  &                     &86MB  &$77.1\%_{\uparrow 0.26}$           &$7740_{\downarrow 883}$                \\
+		& Resnet18\&Resnext29(A) &                   &86MB    &$76.81\%_{\downarrow 0.03}$           &$8987_{\uparrow 364}$                \\
+		& Shufflenetv2\&Resnet34(A)    &                   &3.6MB    &$73.61\%_{\uparrow 4.27}$            &$6516_{\downarrow 1443}$                \\
+		& Shufflenetv2\&Resnet50(A)     &                   &3.6MB    &$73.52\%_{\uparrow 4.18}$             &$7206_{\downarrow 753}$                \\
+		& Shufflenetv2\&Resnext29(A)   &           &3.6MB       &     &   \\\toprule            
+	\end{tabular}
+\end{table}
 %\begin{itemize}
 %    %\vspace{-1em}
 %    \item[1)] 根据目标数据和任务进行模型训练的训练步骤；
